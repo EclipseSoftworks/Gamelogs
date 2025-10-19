@@ -1,62 +1,62 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>🎮 GameLogs Viewer</title>
-  <style>
-    body { font-family: Arial; background: #0f0f0f; color: #fff; text-align: center; margin:0; padding:20px; }
-    h1 { color: #ffd700; }
-    #games { display: flex; flex-wrap: wrap; justify-content: center; gap: 20px; margin-top: 20px; }
-    .game { background: #1a1a1a; border-radius: 12px; padding:15px; width:220px; box-shadow:0 4px 10px rgba(0,0,0,0.5); transition: transform 0.2s; }
-    .game:hover { transform: scale(1.03); }
-    .game img { width: 150px; height: 150px; border-radius: 8px; }
-    .join-btn { background:#ffcc00; color:#000; border:none; padding:10px 15px; border-radius:8px; margin-top:8px; cursor:pointer; font-weight:bold; }
-    .join-btn:hover { background:#ffd633; }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🎮 GameLogs Viewer</title>
+<style>
+body { font-family: Arial; background: #0f0f0f; color: #fff; text-align: center; margin:0; padding:20px; }
+h1 { color: #ffd700; }
+#games { display: flex; flex-wrap: wrap; justify-content: center; gap: 20px; margin-top: 20px; }
+.game { background: #1a1a1a; border-radius: 12px; padding:15px; width:220px; box-shadow:0 4px 10px rgba(0,0,0,0.5); transition: transform 0.2s; }
+.game:hover { transform: scale(1.03); }
+.game img { width: 150px; height: 150px; border-radius: 8px; }
+.join-btn { background:#ffcc00; color:#000; border:none; padding:10px 15px; border-radius:8px; margin-top:8px; cursor:pointer; font-weight:bold; }
+.join-btn:hover { background:#ffd633; }
+</style>
 </head>
 <body>
-  <h1>🎮 GameLogs Viewer</h1>
-  <div id="games">Loading...</div>
+<h1>🎮 GameLogs Viewer</h1>
+<div id="games">Loading...</div>
 
-  <script>
-    async function fetchGames() {
-      try {
-        const res = await fetch("/api/gamelogs"); // GET logs
-        if (!res.ok) throw new Error("Failed to fetch game logs");
-        const data = await res.json();
+<script>
+async function fetchGames() {
+  try {
+    const res = await fetch("/api/gamelogs");
+    if (!res.ok) throw new Error("Failed to fetch game logs");
+    const data = await res.json();
 
-        const gamesDiv = document.getElementById("games");
-        gamesDiv.innerHTML = "";
+    const gamesDiv = document.getElementById("games");
+    gamesDiv.innerHTML = "";
 
-        if (!data || data.length === 0) {
-          gamesDiv.textContent = "No game logs yet...";
-          return;
-        }
-
-        data.forEach(game => {
-          const card = document.createElement("div");
-          card.className = "game";
-          card.innerHTML = `
-            <img src="${game.imageUrl}" alt="${game.name}">
-            <h3>${game.name}</h3>
-            <p>👥 Players: ${game.playing}</p>
-            <button class="join-btn" onclick="joinGame('${game.placeId}', '${game.universeId}')">Join</button>
-          `;
-          gamesDiv.appendChild(card);
-        });
-      } catch (err) {
-        console.error(err);
-        document.getElementById("games").textContent = "Error loading data.";
-      }
+    if (!data || data.length === 0) {
+      gamesDiv.textContent = "No game logs yet...";
+      return;
     }
 
-    function joinGame(placeId, universeId) {
-      window.location.href = `roblox://placeID=${placeId}&gameID=${universeId}`;
-    }
+    data.forEach(game => {
+      const card = document.createElement("div");
+      card.className = "game";
+      card.innerHTML = `
+        <img src="${game.imageUrl}" alt="${game.name}">
+        <h3>${game.name}</h3>
+        <p>👥 Players: ${game.playing}</p>
+        <button class="join-btn" onclick="joinGame('${game.placeId}','${game.universeId}')">Join</button>
+      `;
+      gamesDiv.appendChild(card);
+    });
+  } catch (err) {
+    console.error(err);
+    document.getElementById("games").textContent = "Error loading data.";
+  }
+}
 
-    fetchGames();
-    setInterval(fetchGames, 10000); // refresh every 10 seconds
-  </script>
+function joinGame(placeId, universeId) {
+  window.location.href = `roblox://placeID=${placeId}&gameID=${universeId}`;
+}
+
+fetchGames();
+setInterval(fetchGames, 10000); // refresh every 10 seconds
+</script>
 </body>
 </html>
