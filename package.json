@@ -1,6 +1,17 @@
 {
+  "name": "gamelogs-viewer",
+  "version": "1.0.0",
+  "description": "A Roblox GameLogs Viewer using Supabase and Vercel",
+  "main": "index.js",
+  "scripts": {
+    "start": "vercel dev"
+  },
+  "keywords": ["roblox", "gamelogs", "supabase", "vercel"],
+  "author": "YourName",
+  "license": "MIT",
   "dependencies": {
-    "@vercel/kv": "^1.0.0",
-    "next": "13.x"
-  }
+    "@supabase/supabase-js": "^2.34.0",
+    "node-fetch": "^3.4.0"
+  },
+  "type": "module"
 }
