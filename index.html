@@ -1,87 +1,67 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Eclipse Gamelogs</title>
-    <style>
-      body {
-        font-family: Arial, sans-serif;
-        background-color: #111;
-        color: #fff;
-        text-align: center;
-        margin: 0;
-        padding: 30px;
-      }
-      h1 {
-        color: #facc15;
-      }
-      table {
-        margin: 20px auto;
-        border-collapse: collapse;
-        width: 80%;
-        background-color: #1c1c1c;
-        border-radius: 10px;
-        overflow: hidden;
-      }
-      th, td {
-        padding: 12px;
-        border-bottom: 1px solid #333;
-      }
-      th {
-        background-color: #222;
-        color: #facc15;
-      }
-      img {
-        width: 80px;
-        height: 80px;
-        border-radius: 10px;
-      }
-      button {
-        background-color: #facc15;
-        border: none;
-        padding: 8px 14px;
-        border-radius: 6px;
-        cursor: pointer;
-      }
-      button:hover {
-        background-color: #eab308;
-      }
-    </style>
-  </head>
-  <body>
-    <h1>Eclipse Game Logs</h1>
-    <table id="gameTable">
-      <thead>
-        <tr>
-          <th>Thumbnail</th>
-          <th>Players</th>
-          <th>Join</th>
-        </tr>
-      </thead>
-      <tbody></tbody>
-    </table>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Roblox Game Viewer</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #f0f0f0; padding: 20px; }
+    .container { display: flex; flex-wrap: wrap; gap: 20px; }
+    .game-card { background: white; border: 1px solid #ddd; border-radius: 8px; padding: 15px; width: 200px; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    .game-card img { width: 150px; height: 150px; object-fit: cover; border-radius: 4px; }
+    .game-card h2 { font-size: 18px; margin: 10px 0; }
+    .game-card p { margin: 5px 0; color: #666; }
+    .game-card a { display: inline-block; background: #1f8aed; color: white; padding: 10px 20px; border-radius: 4px; text-decoration: none; }
+    .game-card a:hover { background: #166cc2; }
+  </style>
+</head>
+<body>
+  <h1>Active Roblox Games</h1>
+  <div class="container" id="games-container"></div>
 
-    <script>
-      async function fetchGames() {
-        const res = await fetch("/api/getGames");
-        const data = await res.json();
-        const tbody = document.querySelector("#gameTable tbody");
-        tbody.innerHTML = "";
+  <script>
+    const container = document.getElementById('games-container');
 
-        data.forEach((game) => {
-          const row = document.createElement("tr");
-          row.innerHTML = `
-            <td><img src="${game.ImageURL}" alt="Game Icon"></td>
-            <td>${game.Playing}</td>
-            <td><button onclick="window.location.href='roblox://placeId=${game.PlaceID}&gameId=${game.GameID}'">Join</button></td>
-          `;
-          tbody.appendChild(row);
+    async function fetchGames() {
+      try {
+        const response = await fetch('/api/games');
+        const { games } = await response.json();
+        
+        container.innerHTML = ''; // Clear existing
+
+        games.forEach(game => {
+          const card = document.createElement('div');
+          card.className = 'game-card';
+          
+          const img = document.createElement('img');
+          img.src = game.thumbnail || 'https://via.placeholder.com/150';
+          card.appendChild(img);
+          
+          const h2 = document.createElement('h2');
+          h2.textContent = game.name;
+          card.appendChild(h2);
+          
+          const p = document.createElement('p');
+          p.textContent = `${game.playing} players online`;
+          card.appendChild(p);
+          
+          const a = document.createElement('a');
+          a.href = `roblox://experiences/start?placeId=${game.placeId}&universeId=${game.universeId}`;
+          a.textContent = 'Join';
+          card.appendChild(a);
+          
+          container.appendChild(card);
         });
+      } catch (error) {
+        console.error('Failed to fetch games:', error);
       }
+    }
 
-      setInterval(fetchGames, 15000);
-      fetchGames();
-    </script>
-  </body>
+    // Fetch initially
+    fetchGames();
+
+    // Refresh every 10 seconds
+    setInterval(fetchGames, 10000);
+  </script>
+</body>
 </html>
