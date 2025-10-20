@@ -7,6 +7,7 @@ export default async function handler(req, res) {
     const timeout = 5 * 60 * 1000; // 5 minutes
 
     const games = [];
+    const expired = [];
 
     for (const universeId of universeIds) {
       const key = `game:${universeId}`;
@@ -18,12 +19,17 @@ export default async function handler(req, res) {
         // Clean up expired
         await kv.del(key);
         await kv.srem('active_games', universeId);
+        expired.push(universeId);
       }
+    }
+
+    if (expired.length > 0) {
+      console.log(`Cleaned up ${expired.length} expired games: ${expired.join(', ')}`);
     }
 
     return res.status(200).json({ games });
   } catch (error) {
-    console.error(error);
+    console.error('Games fetch error:', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 }
