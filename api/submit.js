@@ -1,5 +1,21 @@
 import kv from '@vercel/kv';
 
+async function fetchWithRetry(url, retries = 3, delay = 1000) {
+  for (let i = 0; i < retries; i++) {
+    try {
+      const response = await fetch(url);
+      if (response.ok) return response;
+      if (response.status === 429) {
+        await new Promise(resolve => setTimeout(resolve, delay * (i + 1)));
+        continue;
+      }
+      throw new Error(`HTTP ${response.status}: ${await response.text()}`);
+    } catch (error) {
+      if (i === retries - 1) throw error;
+    }
+  }
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -13,10 +29,7 @@ export default async function handler(req, res) {
 
   try {
     // Fetch game details
-    const gamesResponse = await fetch(`https://games.roblox.com/v1/games?universeIds=${universeId}`);
-    if (!gamesResponse.ok) {
-      throw new Error(`Games API failed: ${gamesResponse.status} - ${await gamesResponse.text()}`);
-    }
+    const gamesResponse = await fetchWithRetry(`https://games.roblox.com/v1/games?universeIds=${universeId}`);
     const gamesData = await gamesResponse.json();
     const gameInfo = gamesData.data[0];
 
@@ -27,21 +40,21 @@ export default async function handler(req, res) {
     const name = gameInfo.name;
     const playing = gameInfo.playing;
 
-    // Fetch thumbnail (fixed format=PNG)
-    const thumbsResponse = await fetch(`https://thumbnails.roblox.com/v1/games/icons?universeIds=${universeId}&size=150x150&format=PNG&isCircular=false`);
+    // Fetch thumbnail
     let thumbnail = '';
-    if (thumbsResponse.ok) {
+    try {
+      const thumbsResponse = await fetchWithRetry(`https://thumbnails.roblox.com/v1/games/icons?universeIds=${universeId}&size=150x150&format=PNG&isCircular=false`);
       const thumbsData = await thumbsResponse.json();
       thumbnail = thumbsData.data[0]?.imageUrl || '';
-    } else {
-      console.warn(`Thumbnails API failed: ${thumbsResponse.status} - ${await thumbsResponse.text()}`);
-      // Continue without thumbnail to avoid crash
+    } catch (error) {
+      console.warn(`Thumbnail fetch failed: ${error.message}`);
+      // Continue without thumbnail
     }
 
     // Store or update
     const key = `game:${universeId}`;
     const data = {
-      universeId,  // Added for join button
+      universeId,
       placeId,
       name,
       playing,
