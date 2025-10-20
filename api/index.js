@@ -1,22 +1,22 @@
 // Use 'node-fetch@2' for compatibility with Vercel's Node.js 18.x runtime
 const fetch = require('node-fetch');
 const express = require('express');
-const cors = require('cors');
+const cors = require('cors'); // <-- This package is the CORS fix
 
 const app = express();
 
-// Use middleware
-app.use(cors()); // Allow requests from any origin (your index.html)
-app.use(express.json()); // Parse JSON bodies from Roblox
+// --- MIDDLEWARE ---
+app.use(cors()); // <-- This line *applies* the CORS fix. It allows your website to make requests.
+app.use(express.json()); // <-- This allows the server to read JSON from Roblox
 
-// This is our in-memory "database" to store active games.
-// The key is the universeId.
+// This is our in-memory "database" to store active games
 const activeGames = new Map();
 
 // 5 minutes in milliseconds
 const FIVE_MINUTES_MS = 5 * 60 * 1000;
 
-// --- API Endpoint to receive data from Roblox ---
+// --- Endpoint 1: Receives data from Roblox ---
+// This is your '/api/update' endpoint
 app.post('/api/update', async (req, res) => {
   const { universeId, placeId } = req.body;
 
@@ -38,7 +38,6 @@ app.post('/api/update', async (req, res) => {
     const iconInfo = iconData?.data[0];
 
     if (!gameInfo || !iconInfo || iconInfo.state !== 'Completed') {
-      // If data is incomplete (e.g., game is private or icon isn't ready), don't store it.
       return res.status(404).json({ error: 'Game data not found or icon not ready.' });
     }
 
@@ -60,7 +59,8 @@ app.post('/api/update', async (req, res) => {
   }
 });
 
-// --- API Endpoint to send data to your HTML viewer ---
+// --- Endpoint 2: Sends data to your website ---
+// This is your '/api/games' endpoint
 app.get('/api/games', (req, res) => {
   const now = Date.now();
   
