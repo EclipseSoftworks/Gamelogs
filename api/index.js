@@ -1,4 +1,4 @@
-// Use 'node-fetch@2' for compatibility with Vercel's Node.js 18.x runtime
+// Use 'node-fetch@2' for compatibility with CommonJS and Vercel's Node.js 18.x runtime
 const fetch = require('node-fetch');
 const express = require('express');
 const cors = require('cors');
@@ -8,7 +8,7 @@ const app = express();
 // --- CONFIG ---
 const ALLOWED_ORIGINS = [
   'https://gamelogs-six.vercel.app', // your frontend
-  'http://localhost:3000',            // for local testing
+  'http://localhost:3000',           // local testing
 ];
 
 // --- MIDDLEWARE ---
@@ -46,23 +46,25 @@ app.post('/api/update', async (req, res) => {
   }
 
   try {
-    const gameDetailsResponse = await fetch(
-      `https://games.roblox.com/v1/games?universeIds=${universeId}`
-    );
-    const gameDetailsData = await gameDetailsResponse.json();
+    // Fetch Roblox game data and icon
+    const [gameDetailsResponse, iconResponse] = await Promise.all([
+      fetch(`https://games.roblox.com/v1/games?universeIds=${universeId}`),
+      fetch(`https://thumbnails.roblox.com/v1/games/icons?universeIds=${universeId}&size=150x150&format=Png&isCircular=false`)
+    ]);
 
-    const iconResponse = await fetch(
-      `https://thumbnails.roblox.com/v1/games/icons?universeIds=${universeId}&size=150x150&format=Png&isCircular=false`
-    );
-    const iconData = await iconResponse.json();
+    const [gameDetailsData, iconData] = await Promise.all([
+      gameDetailsResponse.json(),
+      iconResponse.json()
+    ]);
 
-    const gameInfo = gameDetailsData?.data[0];
-    const iconInfo = iconData?.data[0];
+    const gameInfo = gameDetailsData?.data?.[0];
+    const iconInfo = iconData?.data?.[0];
 
     if (!gameInfo || !iconInfo || iconInfo.state !== 'Completed') {
       return res.status(404).json({ error: 'Game data not found or icon not ready.' });
     }
 
+    // Store data in memory
     activeGames.set(universeId.toString(), {
       placeId,
       universeId,
@@ -72,25 +74,26 @@ app.post('/api/update', async (req, res) => {
       lastUpdated: Date.now(),
     });
 
-    res.status(200).json({ success: true, name: gameInfo.name });
+    return res.status(200).json({ success: true, name: gameInfo.name });
   } catch (error) {
     console.error('Error fetching game data:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    return res.status(500).json({ error: 'Internal server error' });
   }
 });
 
 // --- /api/games ---
 app.get('/api/games', (req, res) => {
   const now = Date.now();
+
+  // Auto-clean expired entries
   for (const [universeId, game] of activeGames.entries()) {
     if (now - game.lastUpdated > FIVE_MINUTES_MS) {
       activeGames.delete(universeId);
     }
   }
 
-  const gamesList = Array.from(activeGames.values());
-  res.status(200).json(gamesList);
+  res.status(200).json(Array.from(activeGames.values()));
 });
 
-// Export the app for Vercel
+// --- EXPORT FOR VERCEL ---
 module.exports = app;
