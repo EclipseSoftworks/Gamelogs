@@ -1,22 +1,43 @@
 // Use 'node-fetch@2' for compatibility with Vercel's Node.js 18.x runtime
 const fetch = require('node-fetch');
 const express = require('express');
-const cors = require('cors'); // <-- This package is the CORS fix
+const cors = require('cors');
 
 const app = express();
 
+// --- CONFIG ---
+const ALLOWED_ORIGINS = [
+  'https://gamelogs-six.vercel.app', // your frontend
+  'http://localhost:3000',            // for local testing
+];
+
 // --- MIDDLEWARE ---
-app.use(cors()); // <-- This line *applies* the CORS fix. It allows your website to make requests.
-app.use(express.json()); // <-- This allows the server to read JSON from Roblox
+app.use(express.json());
 
-// This is our in-memory "database" to store active games
+// --- CORS FIX ---
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+
+  if (ALLOWED_ORIGINS.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  }
+
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+
+  next();
+});
+
+// --- IN-MEMORY DB ---
 const activeGames = new Map();
-
-// 5 minutes in milliseconds
 const FIVE_MINUTES_MS = 5 * 60 * 1000;
 
-// --- Endpoint 1: Receives data from Roblox ---
-// This is your '/api/update' endpoint
+// --- /api/update ---
 app.post('/api/update', async (req, res) => {
   const { universeId, placeId } = req.body;
 
@@ -25,15 +46,16 @@ app.post('/api/update', async (req, res) => {
   }
 
   try {
-    // 1. Get Game Details (Name, Players)
-    const gameDetailsResponse = await fetch(`https://games.roblox.com/v1/games?universeIds=${universeId}`);
+    const gameDetailsResponse = await fetch(
+      `https://games.roblox.com/v1/games?universeIds=${universeId}`
+    );
     const gameDetailsData = await gameDetailsResponse.json();
-    
-    // 2. Get Game Icon
-    const iconResponse = await fetch(`https://thumbnails.roblox.com/v1/games/icons?universeIds=${universeId}&size=150x150&format=Png&isCircular=false`);
+
+    const iconResponse = await fetch(
+      `https://thumbnails.roblox.com/v1/games/icons?universeIds=${universeId}&size=150x150&format=Png&isCircular=false`
+    );
     const iconData = await iconResponse.json();
 
-    // Extract the needed data
     const gameInfo = gameDetailsData?.data[0];
     const iconInfo = iconData?.data[0];
 
@@ -41,37 +63,31 @@ app.post('/api/update', async (req, res) => {
       return res.status(404).json({ error: 'Game data not found or icon not ready.' });
     }
 
-    // Store or update the game data
     activeGames.set(universeId.toString(), {
-      placeId: placeId,
-      universeId: universeId,
+      placeId,
+      universeId,
       name: gameInfo.name,
       playing: gameInfo.playing,
       imageUrl: iconInfo.imageUrl,
-      lastUpdated: Date.now(), // Store the timestamp
+      lastUpdated: Date.now(),
     });
 
     res.status(200).json({ success: true, name: gameInfo.name });
-
   } catch (error) {
     console.error('Error fetching game data:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
 
-// --- Endpoint 2: Sends data to your website ---
-// This is your '/api/games' endpoint
+// --- /api/games ---
 app.get('/api/games', (req, res) => {
   const now = Date.now();
-  
-  // Prune old entries (games not updated in 5 minutes)
   for (const [universeId, game] of activeGames.entries()) {
     if (now - game.lastUpdated > FIVE_MINUTES_MS) {
       activeGames.delete(universeId);
     }
   }
 
-  // Convert the Map values to an array for the frontend
   const gamesList = Array.from(activeGames.values());
   res.status(200).json(gamesList);
 });
