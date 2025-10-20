@@ -1,41 +1,51 @@
-import { createClient } from '@supabase/supabase-js';
+import fetch from "node-fetch";
+import { createClient } from "@supabase/supabase-js";
 
-const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
-const API_SECRET = process.env.API_SECRET;
+// 🔧 EDIT THESE
+const SUPABASE_URL = "https://suuwatvyyvsdtqjnwlse.supabase.co";
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN1dXdhdHZ5eXZzZHRxam53bHNlIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1NjQwNDE4MCwiZXhwIjoyMDcxOTgwMTgwfQ.GPkIJTrUkCv6g61BVuodxtYqHvYX8ZlMBfPGz5vgjfM";
+const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 export default async function handler(req, res) {
-  if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
-
-  const { secret, universeId, placeId } = req.body;
-  if (secret !== API_SECRET) return res.status(403).json({ error: "Forbidden" });
+  if (req.method !== "POST") return res.status(405).end();
 
   try {
-    // Fetch verified game info
+    const { GameId, PlaceId } = req.body;
+    if (!GameId || !PlaceId) return res.status(400).json({ error: "Missing IDs" });
+
+    // 1️⃣ Get Universe ID
+    const uniRes = await fetch(`https://apis.roblox.com/universes/v1/places/${GameId}/universe`);
+    const uniData = await uniRes.json();
+    const universeId = uniData.universeId;
+    if (!universeId) throw new Error("No Universe ID found");
+
+    // 2️⃣ Get Game Info
     const gameRes = await fetch(`https://games.roblox.com/v1/games?universeIds=${universeId}`);
-    const info = (await gameRes.json()).data?.[0];
-    if (!info) return res.status(404).json({ error: "Game not found" });
+    const gameData = await gameRes.json();
+    const game = gameData.data[0];
+    const playing = game.playing;
 
-    // Fetch thumbnail
-    const thumbRes = await fetch(`https://thumbnails.roblox.com/v1/games/icons?universeIds=${universeId}&size=150x150&format=Png&isCircular=false`);
-    const imageUrl = (await thumbRes.json()).data?.[0]?.imageUrl || "";
+    // 3️⃣ Get Thumbnail
+    const thumbRes = await fetch(
+      `https://thumbnails.roblox.com/v1/games/icons?universeIds=${universeId}&size=150x150&format=Png&isCircular=false`
+    );
+    const thumbData = await thumbRes.json();
+    const imageUrl = thumbData.data[0].imageUrl;
 
-    // Upsert into Supabase
-    const { error } = await supabase
-      .from('gamelogs')
+    // 4️⃣ Save / Update in Supabase
+    await supabase
+      .from("games")
       .upsert({
-        universeId,
-        placeId,
-        name: info.name,
-        playing: info.playing,
-        imageUrl,
-        lastUpdated: new Date().toISOString()
-      }, { onConflict: 'universeId' });
+        GameId,
+        PlaceId,
+        ImageURL: imageUrl,
+        Playing: playing,
+        updated_at: new Date().toISOString(),
+      });
 
-    if (error) throw error;
-
-    res.status(200).json({ success: true });
+    res.json({ success: true, universeId, playing, imageUrl });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: "Internal server error", details: err.message });
+    res.status(500).json({ error: err.message });
   }
 }
