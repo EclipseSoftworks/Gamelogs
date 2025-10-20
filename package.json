@@ -1,10 +1,10 @@
 {
-  "name": "roblox-game-viewer",
+  "name": "roblox-game-viewer-api",
   "version": "1.0.0",
+  "main": "api/index.js",
   "dependencies": {
-    "@vercel/kv": "^1.0.1"
-  },
-  "engines": {
-    "node": ">=18"
+    "express": "^4.18.2",
+    "node-fetch": "^2.6.7",
+    "cors": "^2.8.5"
   }
 }
