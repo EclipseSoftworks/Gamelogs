@@ -6,38 +6,13 @@ const supabase = createClient(
 );
 
 export default async function handler(req, res) {
-  if (req.method !== "POST") {
-    return res.status(405).json({ error: "Only POST allowed" });
-  }
+  const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
 
-  try {
-    const { GameID, PlaceID, ImageURL, Playing } = req.body;
+  const { error } = await supabase
+    .from("gamelogs")
+    .delete()
+    .lt("updated_at", tenMinutesAgo);
 
-    const { data: existing } = await supabase
-      .from("gamelogs")
-      .select("*")
-      .eq("GameID", GameID)
-      .single();
-
-    if (existing) {
-      await supabase
-        .from("gamelogs")
-        .update({ Playing, updated_at: new Date() })
-        .eq("GameID", GameID);
-    } else {
-      await supabase.from("gamelogs").insert([
-        {
-          GameID,
-          PlaceID,
-          ImageURL,
-          Playing,
-          updated_at: new Date(),
-        },
-      ]);
-    }
-
-    return res.status(200).json({ success: true });
-  } catch (err) {
-    return res.status(500).json({ error: err.message });
-  }
+  if (error) return res.status(500).json({ error: error.message });
+  return res.status(200).json({ success: true });
 }
