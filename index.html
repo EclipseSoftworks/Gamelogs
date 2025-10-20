@@ -25,16 +25,20 @@
     async function fetchGames() {
       try {
         const response = await fetch('/api/games');
+        if (!response.ok) {
+          throw new Error(`Fetch failed: ${response.status}`);
+        }
         const { games } = await response.json();
         
-        container.innerHTML = ''; // Clear existing
+        container.innerHTML = '';
 
         games.forEach(game => {
           const card = document.createElement('div');
           card.className = 'game-card';
           
           const img = document.createElement('img');
-          img.src = game.thumbnail || 'https://via.placeholder.com/150';
+          img.src = game.thumbnail || 'https://via.placeholder.com/150?text=No+Image';
+          img.alt = game.name;
           card.appendChild(img);
           
           const h2 = document.createElement('h2');
@@ -48,20 +52,19 @@
           const a = document.createElement('a');
           a.href = `roblox://experiences/start?placeId=${game.placeId}&universeId=${game.universeId}`;
           a.textContent = 'Join';
+          a.target = '_blank';  // Optional: opens in new tab
           card.appendChild(a);
           
           container.appendChild(card);
         });
       } catch (error) {
         console.error('Failed to fetch games:', error);
+        container.innerHTML = '<p>Error loading games. Check console.</p>';
       }
     }
 
-    // Fetch initially
     fetchGames();
-
-    // Refresh every 10 seconds
-    setInterval(fetchGames, 10000);
+    setInterval(fetchGames, 10000);  // Refresh every 10s
   </script>
 </body>
 </html>
